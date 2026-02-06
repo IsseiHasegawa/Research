@@ -14,7 +14,6 @@ private:
     int port_;
     int listen_fd_ = -1;
 
-    // demo用：インメモリKVS
     std::unordered_map<std::string, std::string> kv_;
 
     static bool send_all(int fd, const std::string& s);

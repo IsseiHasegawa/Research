@@ -56,15 +56,19 @@ bool Server::send_all(int fd, const std::string& s) {
 
 bool Server::read_line(int fd, std::string& buf, std::string& line) {
     while (true) {
-        auto pos = buf.find("\r\n");
+        auto pos = buf.find('\n');
         if (pos != std::string::npos) {
             line = buf.substr(0, pos);
-            buf.erase(0, pos + 2);
+            if (!line.empty() && line.back() == '\r') {
+                line.pop_back(); // CRLF対応
+            }
+            buf.erase(0, pos + 1);
             return true;
         }
+
         char tmp[4096];
         ssize_t n = ::recv(fd, tmp, sizeof(tmp), 0);
-        if (n == 0) return false; // closed
+        if (n == 0) return false;
         if (n < 0) {
             if (errno == EINTR) continue;
             return false;
