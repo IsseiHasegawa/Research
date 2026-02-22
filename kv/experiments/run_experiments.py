@@ -30,7 +30,7 @@ def start_node(node_id, port, is_leader, run_dir: Path,
     if leader_addr:
         args += ["--leader_addr", leader_addr]
 
-    # stdout を run_dir に保存
+    # Save stdout to run_dir
     out = (run_dir / f"{node_id}.out").open("w")
     p = subprocess.Popen(args, stdout=out, stderr=subprocess.STDOUT, text=True)
     return p

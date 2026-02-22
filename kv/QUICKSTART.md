@@ -1,57 +1,57 @@
-# クイックスタートガイド
+# Quick Start Guide
 
-## 現在のディレクトリを確認
+## Check Current Directory
 
 ```bash
 pwd
 ```
 
-## 正しい実行手順
+## Correct Run Steps
 
-### 1. kvディレクトリに移動
+### 1. Move to kv Directory
 
-**現在 `build` ディレクトリにいる場合:**
+**If you are in the `build` directory:**
 ```bash
-cd ..  # 親ディレクトリ（kv/）に戻る
+cd ..  # Go back to parent directory (kv/)
 ```
 
-**または、絶対パスで移動:**
+**Or use absolute path:**
 ```bash
 cd /Users/issei/Research/kv
 ```
 
-### 2. Python依存関係のインストール
+### 2. Install Python Dependencies
 
 ```bash
 pip3 install -r experiments/requirements.txt
 ```
 
-**権限エラーが出る場合:**
+**If you get a permission error:**
 ```bash
 pip3 install --user -r experiments/requirements.txt
 ```
 
-### 3. 実験の実行
+### 3. Run Experiments
 
 ```bash
 python3 experiments/run_experiments.py
 ```
 
-### 4. 結果の分析
+### 4. Analyze Results
 
 ```bash
 python3 analysis/analyze.py
 python3 analysis/plot_heatmap.py
 ```
 
-## ディレクトリ構造の確認
+## Verify Directory Structure
 
 ```bash
-# kvディレクトリにいることを確認
+# Confirm you are in the kv directory
 pwd
-# 出力: /Users/issei/Research/kv
+# Output: /Users/issei/Research/kv
 
-# 必要なファイルが存在するか確認
+# Verify required files exist
 ls experiments/requirements.txt
 ls analysis/analyze.py
 ls build/kvnode

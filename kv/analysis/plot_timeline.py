@@ -43,7 +43,7 @@ def main(run_id: str):
     print("saved:", out)
 
 if __name__ == "__main__":
-    # 例: python analysis/plot_timeline.py leader_crash_hb100_to500_...
+    # Example: python analysis/plot_timeline.py leader_crash_hb100_to500_...
     import sys
     if len(sys.argv) != 2:
         print("usage: python plot_timeline.py <run_id>")

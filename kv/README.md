@@ -1,8 +1,8 @@
-# Distributed KV Store - 実行ガイド
+# Distributed KV Store - Run Guide
 
-## セットアップ
+## Setup
 
-### 1. C++ビルド
+### 1. C++ Build
 
 ```bash
 cd kv
@@ -12,37 +12,37 @@ cmake ..
 make
 ```
 
-これで `build/kvnode` が生成されます。
+This produces `build/kvnode`.
 
-### 2. Python依存関係のインストール
+### 2. Python Dependencies
 
 ```bash
 cd kv
 pip3 install -r experiments/requirements.txt
 ```
 
-必要なパッケージ:
-- `requests` (HTTPクライアント)
-- `pandas` (データ分析)
-- `matplotlib` (可視化)
+Required packages:
+- `requests` (HTTP client)
+- `pandas` (data analysis)
+- `matplotlib` (visualization)
 
-## 実行方法
+## How to Run
 
-### 実験の実行
+### Run Experiments
 
 ```bash
 cd kv
 python3 experiments/run_experiments.py
 ```
 
-このスクリプトは:
-- 複数のハートビート間隔 (50, 100, 200ms) とタイムアウト (200, 400, 800, 1200ms) の組み合わせで実験を実行
-- 各実験でリーダーをクラッシュさせ、障害検出時間とダウンタイムを測定
-- 結果を `runs/` ディレクトリに保存
+This script:
+- Runs experiments across heartbeat intervals (50, 100, 200ms) and timeouts (200, 400, 800, 1200ms)
+- Crashes the leader in each run and measures failure detection time and downtime
+- Saves results under `runs/`
 
-### 個別ノードの手動起動
+### Manual Node Startup
 
-#### リーダー (ポート8001)
+#### Leader (port 8001)
 
 ```bash
 ./build/kvnode \
@@ -55,7 +55,7 @@ python3 experiments/run_experiments.py
   --log runs/test/A.jsonl
 ```
 
-#### フォロワー B (ポート8002)
+#### Follower B (port 8002)
 
 ```bash
 ./build/kvnode \
@@ -68,7 +68,7 @@ python3 experiments/run_experiments.py
   --log runs/test/B.jsonl
 ```
 
-#### フォロワー C (ポート8003)
+#### Follower C (port 8003)
 
 ```bash
 ./build/kvnode \
@@ -81,9 +81,9 @@ python3 experiments/run_experiments.py
   --log runs/test/C.jsonl
 ```
 
-### APIの使用例
+### API Examples
 
-#### PUT (リーダーに書き込み)
+#### PUT (write to leader)
 
 ```bash
 curl -X POST http://127.0.0.1:8001/put?rid=test-1 \
@@ -91,7 +91,7 @@ curl -X POST http://127.0.0.1:8001/put?rid=test-1 \
   -d '{"key": "x", "value": "hello"}'
 ```
 
-#### GET (任意のノードから読み込み)
+#### GET (read from any node)
 
 ```bash
 curl -X POST http://127.0.0.1:8002/get?rid=test-2 \
@@ -99,90 +99,90 @@ curl -X POST http://127.0.0.1:8002/get?rid=test-2 \
   -d '{"key": "x"}'
 ```
 
-## 結果の分析
+## Result Analysis
 
-### 1. メトリクスの抽出
+### 1. Extract Metrics
 
 ```bash
 cd kv
 python3 analysis/analyze.py
 ```
 
-これで `analysis_out/metrics.csv` が生成されます。
+This generates `analysis_out/metrics.csv`.
 
-### 2. ヒートマップの生成
+### 2. Generate Heatmaps
 
 ```bash
 python3 analysis/plot_heatmap.py
 ```
 
-生成されるファイル:
-- `plots/heatmap_downtime.png` - ダウンタイムのヒートマップ
-- `plots/heatmap_detection.png` - 障害検出時間のヒートマップ
+Output files:
+- `plots/heatmap_downtime.png` - Downtime heatmap
+- `plots/heatmap_detection.png` - Failure detection time heatmap
 
-### 3. タイムラインの可視化
+### 3. Timeline Visualization
 
-**利用可能なrun_idを確認:**
+**List available run_ids:**
 ```bash
 ls runs/
 ```
 
-**タイムラインを生成:**
+**Generate timeline:**
 ```bash
 python3 analysis/plot_timeline.py <run_id>
 ```
 
-**実行例:**
+**Example:**
 ```bash
-# 例: 利用可能なrun_idの1つを使用
+# Example: use one of the available run_ids
 python3 analysis/plot_timeline.py leader_crash_hb100_to400_1771787322474
 ```
 
-**注意:** `<run_id>` は実際のrun_idに置き換えてください。`<run_id>` という文字列のまま実行するとエラーになります。
+**Note:** Replace `<run_id>` with an actual run_id. Running with the literal string `<run_id>` will cause an error.
 
-生成されるファイル:
-- `plots/timeline_<run_id>.png` - PUT成功/失敗のタイムライン
+Output file:
+- `plots/timeline_<run_id>.png` - PUT success/failure timeline
 
-## ディレクトリ構造
+## Directory Structure
 
 ```
 kv/
-├── build/              # ビルド成果物
-│   └── kvnode          # 実行可能ファイル
-├── src/                # C++ソースコード
-├── vendor/             # サードパーティライブラリ (httplib.h)
-├── experiments/        # 実験スクリプト
+├── build/              # Build artifacts
+│   └── kvnode          # Executable
+├── src/                # C++ source code
+├── vendor/             # Third-party libraries (httplib.h)
+├── experiments/        # Experiment scripts
 │   └── run_experiments.py
-├── analysis/           # 分析スクリプト
+├── analysis/           # Analysis scripts
 │   ├── analyze.py
 │   ├── plot_heatmap.py
 │   └── plot_timeline.py
-├── runs/               # 実験結果 (自動生成)
+├── runs/               # Experiment results (auto-generated)
 │   └── <run_id>/
 │       ├── meta.json
 │       ├── fault.json
 │       ├── client_events.jsonl
 │       ├── A.jsonl, B.jsonl, C.jsonl
 │       └── ...
-├── analysis_out/       # 分析結果 (自動生成)
+├── analysis_out/       # Analysis output (auto-generated)
 │   └── metrics.csv
-└── plots/              # グラフ (自動生成)
+└── plots/              # Plots (auto-generated)
     └── ...
 ```
 
-## トラブルシューティング
+## Troubleshooting
 
-### ビルドエラー
+### Build Errors
 
-- **nlohmann/jsonが見つからない**: CMakeのFetchContentが自動的にダウンロードします。ネットワーク接続を確認してください。
-- **httplib.hが見つからない**: `vendor/httplib.h` が存在することを確認してください。
+- **nlohmann/json not found**: CMake FetchContent will download it automatically. Check your network connection.
+- **httplib.h not found**: Ensure `vendor/httplib.h` exists.
 
-### 実行時エラー
+### Runtime Errors
 
-- **ポートが使用中**: 他のプロセスがポート8001-8003を使用していないか確認してください。
-- **pandas/matplotlibが見つからない**: `pip3 install -r experiments/requirements.txt` を実行してください。
+- **Port in use**: Check that no other process is using ports 8001–8003.
+- **pandas/matplotlib not found**: Run `pip3 install -r experiments/requirements.txt`.
 
-### 実験が完了しない
+### Experiments Not Completing
 
-- 各実験は約6秒かかります。複数の組み合わせを実行する場合、時間がかかります。
-- プロセスが残っている場合は `pkill kvnode` で終了できます。
+- Each experiment takes about 6 seconds. Running many combinations will take longer.
+- If processes are left running, use `pkill kvnode` to stop them.
