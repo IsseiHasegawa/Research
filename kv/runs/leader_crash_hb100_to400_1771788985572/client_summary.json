@@ -1,0 +1,8 @@
+{
+  "num_events": 200,
+  "put_ok": 33,
+  "put_fail": 67,
+  "get_ok": 100,
+  "get_fail": 0,
+  "crashed": true
+}

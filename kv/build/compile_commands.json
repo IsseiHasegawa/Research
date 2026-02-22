@@ -1,0 +1,26 @@
+[
+{
+  "directory": "/Users/issei/Research/kv/build",
+  "command": "/usr/bin/c++  -I/Users/issei/Research/kv/src -I/Users/issei/Research/kv/vendor -I/Users/issei/Research/kv/build/_deps/json-src/include -std=gnu++17 -arch arm64 -o CMakeFiles/kvnode.dir/src/main.cpp.o -c /Users/issei/Research/kv/src/main.cpp",
+  "file": "/Users/issei/Research/kv/src/main.cpp",
+  "output": "CMakeFiles/kvnode.dir/src/main.cpp.o"
+},
+{
+  "directory": "/Users/issei/Research/kv/build",
+  "command": "/usr/bin/c++  -I/Users/issei/Research/kv/src -I/Users/issei/Research/kv/vendor -I/Users/issei/Research/kv/build/_deps/json-src/include -std=gnu++17 -arch arm64 -o CMakeFiles/kvnode.dir/src/node.cpp.o -c /Users/issei/Research/kv/src/node.cpp",
+  "file": "/Users/issei/Research/kv/src/node.cpp",
+  "output": "CMakeFiles/kvnode.dir/src/node.cpp.o"
+},
+{
+  "directory": "/Users/issei/Research/kv/build",
+  "command": "/usr/bin/c++  -I/Users/issei/Research/kv/src -I/Users/issei/Research/kv/vendor -I/Users/issei/Research/kv/build/_deps/json-src/include -std=gnu++17 -arch arm64 -o CMakeFiles/kvnode.dir/src/store.cpp.o -c /Users/issei/Research/kv/src/store.cpp",
+  "file": "/Users/issei/Research/kv/src/store.cpp",
+  "output": "CMakeFiles/kvnode.dir/src/store.cpp.o"
+},
+{
+  "directory": "/Users/issei/Research/kv/build",
+  "command": "/usr/bin/c++  -I/Users/issei/Research/kv/src -I/Users/issei/Research/kv/vendor -I/Users/issei/Research/kv/build/_deps/json-src/include -std=gnu++17 -arch arm64 -o CMakeFiles/kvnode.dir/src/util.cpp.o -c /Users/issei/Research/kv/src/util.cpp",
+  "file": "/Users/issei/Research/kv/src/util.cpp",
+  "output": "CMakeFiles/kvnode.dir/src/util.cpp.o"
+}
+]

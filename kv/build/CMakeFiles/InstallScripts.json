@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/issei/Research/kv/build/cmake_install.cmake",
+		"/Users/issei/Research/kv/build/_deps/json-build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
