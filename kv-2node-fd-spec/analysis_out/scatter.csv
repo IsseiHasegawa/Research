@@ -1,0 +1,3 @@
+missed,hb_interval_ms,hb_timeout_ms,median_detection_ms,iqr_detection_ms,n_trials
+2.0,100,200,149.5,25.5,28
+1.5,200,300,227.0,35.75,20

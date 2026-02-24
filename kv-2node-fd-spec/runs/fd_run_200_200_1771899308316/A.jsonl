@@ -1,0 +1,3 @@
+{"ts_ms":1771899308631,"node_id":"A","run_id":"fd_run_200_200_1771899308316","hb_interval_ms":200,"hb_timeout_ms":200,"event":"hb_ping_sent","peer_id":"B","extra":{}}
+{"ts_ms":1771899308631,"node_id":"A","run_id":"fd_run_200_200_1771899308316","hb_interval_ms":200,"hb_timeout_ms":200,"event":"hb_ack_recv","peer_id":"B","extra":{}}
+{"ts_ms":1771899308838,"node_id":"A","run_id":"fd_run_200_200_1771899308316","hb_interval_ms":200,"hb_timeout_ms":200,"event":"declared_dead","peer_id":"B","extra":{}}

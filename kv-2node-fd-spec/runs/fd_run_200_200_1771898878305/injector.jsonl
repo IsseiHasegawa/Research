@@ -1,0 +1,3 @@
+{"event": "run_start", "run_id": "fd_run_200_200_1771898878305", "ts_ms": 1771898879120, "hb_interval_ms": 200, "hb_timeout_ms": 200}
+{"event": "kill_b", "run_id": "fd_run_200_200_1771898878305", "ts_ms": 1771898881620, "hb_interval_ms": 200, "hb_timeout_ms": 200}
+{"event": "declared_dead", "run_id": "fd_run_200_200_1771898878305", "ts_ms": 1771898878821, "hb_interval_ms": 200, "hb_timeout_ms": 200, "detection_latency_ms": -2799}

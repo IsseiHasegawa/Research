@@ -1,0 +1,3 @@
+/Users/issei/Research/kv-2node-fd-spec/build/CMakeFiles/kvnode.dir
+/Users/issei/Research/kv-2node-fd-spec/build/CMakeFiles/edit_cache.dir
+/Users/issei/Research/kv-2node-fd-spec/build/CMakeFiles/rebuild_cache.dir
