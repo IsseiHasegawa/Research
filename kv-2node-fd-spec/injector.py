@@ -18,8 +18,8 @@ ROOT = Path(__file__).resolve().parent
 BIN = ROOT / "build" / "kvnode"
 RUNS_DIR = ROOT / "runs"
 WARMUP_SEC = 2.5
-# Wait for declared_dead: scale with hb_timeout so large timeouts don't time out prematurely.
-WAIT_DECLARE_K = 6.0  # timeout_sec = max(2.0, K * hb_timeout_ms/1000 + 1.0)
+# Wait for declared_dead: scale with hb_timeout; use generous floor so (100,300) etc. see declaration.
+WAIT_DECLARE_K = 10.0  # timeout_sec = max(5.0, K * hb_timeout_ms/1000 + 2.0)
 
 
 def wall_ms():
@@ -118,8 +118,8 @@ def run_one(hb_interval_ms: int, hb_timeout_ms: int, run_dir: Path) -> dict:
     # Ensure B is really dead so A's connection closes
     time.sleep(0.3)
 
-    # Wait for A to log declared_dead; scale with hb_timeout_ms so sweeps with large timeouts succeed.
-    timeout_sec = max(2.0, WAIT_DECLARE_K * (hb_timeout_ms / 1000.0) + 1.0)
+    # Wait for A to log declared_dead; generous so TCP connection close + hb_timeout are covered.
+    timeout_sec = max(5.0, WAIT_DECLARE_K * (hb_timeout_ms / 1000.0) + 2.0)
     deadline = time.time() + timeout_sec
     t_detect = None
     while time.time() < deadline:

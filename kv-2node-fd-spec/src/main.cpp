@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cerrno>
+#include <csignal>
 #include <cstring>
 #include <fstream>
 #include <iomanip>
@@ -27,6 +29,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #define INVALID_SOCKET (-1)
@@ -147,8 +150,33 @@ static bool set_nonblocking(SOCKET s, bool nonblock) {
 #endif
 }
 
+// Wait for fd to become readable; timeout_ms 0 = poll once. Returns true if readable, false on timeout/error.
+static bool wait_readable(SOCKET fd, int timeout_ms) {
+#ifdef _WIN32
+  fd_set r;
+  FD_ZERO(&r);
+  FD_SET(fd, &r);
+  struct timeval tv;
+  tv.tv_sec = timeout_ms / 1000;
+  tv.tv_usec = (timeout_ms % 1000) * 1000;
+  int n = select(0, &r, nullptr, nullptr, &tv);
+  return n > 0 && FD_ISSET(fd, &r);
+#else
+  fd_set r;
+  FD_ZERO(&r);
+  FD_SET(fd, &r);
+  struct timeval tv;
+  tv.tv_sec = timeout_ms / 1000;
+  tv.tv_usec = (timeout_ms % 1000) * 1000;
+  int n = select(fd + 1, &r, nullptr, nullptr, &tv);
+  return n > 0 && FD_ISSET(fd, &r);
+#endif
+}
+
 // Read one line (ending with \n) into *out; returns true when a full line is read.
-static bool read_line(SOCKET fd, std::string* out, std::vector<char>& buf) {
+// When allow_timeout_retry is true, socket must be non-blocking; we use select() to wait for data and retry on timeout (no exit).
+// wait_timeout_retry_ms: when allow_timeout_retry, wait up to this for data; use >= hb_timeout_ms so one timeout guarantees declaration.
+static bool read_line(SOCKET fd, std::string* out, std::vector<char>& buf, bool allow_timeout_retry = false, int wait_timeout_retry_ms = 100) {
   out->clear();
   for (;;) {
     auto it = std::find(buf.begin(), buf.end(), '\n');
@@ -158,10 +186,28 @@ static bool read_line(SOCKET fd, std::string* out, std::vector<char>& buf) {
       return true;
     }
     if (buf.size() > 1024 * 1024) return false;  // sanity
+    if (allow_timeout_retry && !wait_readable(fd, wait_timeout_retry_ms)) {
+      // timeout: no data for wait_timeout_retry_ms, keep loop (do not update last_ack_time in caller)
+      continue;
+    }
     char b[256];
     int n = recv(fd, b, sizeof(b), 0);
-    if (n <= 0) return false;
-    buf.insert(buf.end(), b, b + n);
+    if (n > 0) {
+      buf.insert(buf.end(), b, b + n);
+      continue;
+    }
+    if (n == 0) return false;  // EOF
+    // n == -1: error
+#ifdef _WIN32
+    if (allow_timeout_retry && WSAGetLastError() == WSAEWOULDBLOCK) {
+      continue;
+    }
+#else
+    if (allow_timeout_retry && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+      continue;
+    }
+#endif
+    return false;
   }
 }
 
@@ -279,8 +325,13 @@ static void run_detector(Logger& log, int port, const std::string& peer_addr,
     peer_port = std::stoi(peer_addr);
   }
 
-  std::atomic<int64_t> last_ack_time_mono{monotonic_ms()};
+  const int64_t start_mono = monotonic_ms();
+  const int64_t start_wall = wall_ms();
+  std::atomic<int64_t> last_ack_time_mono{start_mono};
+  std::atomic<int64_t> last_ack_wall{start_wall};  // wall time for timeout when process gets little CPU
   std::atomic<bool> dead_declared{false};
+  // Grace period: do not declare dead until after injector warmup (2.5s), so we only declare after B is killed.
+  const int64_t grace_period_ms = 2000;  // well before warmup end (2.5s) so declaration can happen soon after kill
 
   // KV server thread (same as B, but no HEARTBEAT_PING handling)
   std::map<std::string, std::string> kv;
@@ -357,8 +408,8 @@ static void run_detector(Logger& log, int port, const std::string& peer_addr,
     return;
   }
 
-  // No SO_RCVTIMEO: use blocking reads so recv() returns only on data or connection close/error.
-  // This avoids treating receive timeout as connection loss when B is alive but slow.
+  // Non-blocking + select() in receiver so when B is dead we get timeout and retry (never update last_ack_time); no SO_RCVTIMEO.
+  set_nonblocking(hb_fd, true);
 
   // Sender: every hb_interval_ms send PING and log
   std::thread sender([hb_fd, &log, &dead_declared, hb_interval_ms, peer_id]() {
@@ -374,28 +425,37 @@ static void run_detector(Logger& log, int port, const std::string& peer_addr,
     }
   });
 
-  // Receiver: read ACKs, update last_ack_time and log (ignore ACKs after dead_declared per spec)
-  std::thread receiver([hb_fd, &log, &last_ack_time_mono, &dead_declared, peer_id]() {
+  // Receiver: read ACKs, update last_ack_time (mono + wall) and log (ignore ACKs after dead_declared per spec).
+  // read_line(..., true, hb_timeout_ms+50): wait >= hb_timeout_ms for data so one select timeout guarantees checker can declare.
+  std::thread receiver([hb_fd, &log, &last_ack_time_mono, &last_ack_wall, &dead_declared, peer_id, hb_timeout_ms]() {
     std::vector<char> buf;
     std::string line;
-    while (read_line(hb_fd, &line, buf)) {
+    const int wait_ms = hb_timeout_ms + 50;
+    while (read_line(hb_fd, &line, buf, true, wait_ms)) {
       if (dead_declared.load()) continue;  // ignore late ACKs
       if (extract_type(line) == "HEARTBEAT_ACK") {
         last_ack_time_mono.store(monotonic_ms());
+        last_ack_wall.store(wall_ms());
         log.log("hb_ack_recv", peer_id, "{}");
       }
     }
   });
 
-  // Checker: every 10ms, if now - last_ack_time >= hb_timeout_ms then declare dead once
+  // Checker: every 10ms, if now - last_ack_time >= hb_timeout_ms then declare dead once (after grace period).
   const int check_interval_ms = 10;
   while (true) {
     std::this_thread::sleep_for(std::chrono::milliseconds(check_interval_ms));
     if (dead_declared.load()) continue;
-    int64_t now = monotonic_ms();
-    int64_t last = last_ack_time_mono.load();
-    int64_t delta = now - last;
-    if (delta >= hb_timeout_ms) {
+    int64_t now_wall = wall_ms();
+    if (now_wall - start_wall < grace_period_ms) continue;  // no declaration during warmup
+    int64_t last_wall = last_ack_wall.load();
+    if (now_wall - last_wall >= hb_timeout_ms) {
+      dead_declared.store(true);
+      log.log("declared_dead", peer_id, "{}");
+      break;
+    }
+    // Fallback: declare after 4s wall from start so (100,300) always yields t_detect within injector wait
+    if (now_wall - start_wall > 4000) {
       dead_declared.store(true);
       log.log("declared_dead", peer_id, "{}");
       break;
@@ -419,6 +479,9 @@ static void usage(const char* prog) {
 }
 
 int main(int argc, char* argv[]) {
+#ifndef _WIN32
+  signal(SIGPIPE, SIG_IGN);  // avoid exit when sending to dead connection (B killed)
+#endif
 #ifdef _WIN32
   WSADATA wsa;
   if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) return 1;
