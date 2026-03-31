@@ -1,0 +1,50 @@
+[
+  {
+    "run_id": "quick_no_repl_t1_1774995126583",
+    "config": "quick_no_repl",
+    "trial": 1,
+    "hb_interval_ms": 100,
+    "hb_timeout_ms": 300,
+    "repl_mode": "none",
+    "fault_type": "crash",
+    "t_fault_ms": 1774995128923,
+    "t_detect_ms": 1774995129138,
+    "detection_latency_ms": 215
+  },
+  {
+    "run_id": "quick_no_repl_t2_1774995133157",
+    "config": "quick_no_repl",
+    "trial": 2,
+    "hb_interval_ms": 100,
+    "hb_timeout_ms": 300,
+    "repl_mode": "none",
+    "fault_type": "crash",
+    "t_fault_ms": 1774995135274,
+    "t_detect_ms": 1774995135477,
+    "detection_latency_ms": 203
+  },
+  {
+    "run_id": "quick_sync_repl_t1_1774995139512",
+    "config": "quick_sync_repl",
+    "trial": 1,
+    "hb_interval_ms": 100,
+    "hb_timeout_ms": 300,
+    "repl_mode": "sync",
+    "fault_type": "crash",
+    "t_fault_ms": 1774995141635,
+    "t_detect_ms": 1774995141835,
+    "detection_latency_ms": 200
+  },
+  {
+    "run_id": "quick_sync_repl_t2_1774995145879",
+    "config": "quick_sync_repl",
+    "trial": 2,
+    "hb_interval_ms": 100,
+    "hb_timeout_ms": 300,
+    "repl_mode": "sync",
+    "fault_type": "crash",
+    "t_fault_ms": 1774995148006,
+    "t_detect_ms": 1774995148196,
+    "detection_latency_ms": 190
+  }
+]

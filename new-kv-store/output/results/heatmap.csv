@@ -1,0 +1,3 @@
+hb_timeout_ms,hb_interval_ms,repl_mode,median_detection_ms,iqr_detection_ms,n_trials
+300,100,none,209.0,6.0,2
+300,100,sync,195.0,5.0,2

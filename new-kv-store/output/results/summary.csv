@@ -1,0 +1,5 @@
+config,run_id,hb_interval_ms,hb_timeout_ms,repl_mode,fault_type,detection_latency_ms,downtime_ms,write_latency_median_us,write_latency_p95_us,write_latency_p99_us,throughput_ops_sec,total_ops,success_ops,failed_ops,false_positives,repl_skipped_count
+quick_no_repl,quick_no_repl_t1_1774995126583,100,300,none,crash,215,3,183.5,303.54999999999995,351.05,42.844901456726646,100,100,0,0,0
+quick_no_repl,quick_no_repl_t2_1774995133157,100,300,none,crash,203,18,164.0,247.45,329.92000000000047,42.19409282700422,100,100,0,0,0
+quick_sync_repl,quick_sync_repl_t1_1774995139512,100,300,sync,crash,200,16,228.0,508.05,560.1500000000001,42.034468263976464,100,100,0,0,3
+quick_sync_repl,quick_sync_repl_t2_1774995145879,100,300,sync,crash,190,5,239.5,493.05,537.6900000000004,42.42681374628765,100,100,0,0,2
