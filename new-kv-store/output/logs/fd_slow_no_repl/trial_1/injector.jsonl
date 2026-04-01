@@ -1,0 +1,3 @@
+{"event": "run_start", "run_id": "fd_slow_no_repl_t1_1775064780016", "ts_ms": 1775064780141, "config": "fd_slow_no_repl", "hb_interval_ms": 200, "hb_timeout_ms": 600, "repl_mode": "none", "fault_type": "crash"}
+{"event": "fault_inject", "run_id": "fd_slow_no_repl_t1_1775064780016", "ts_ms": 1775064783141, "fault_type": "crash", "target": "node1"}
+{"event": "detection_result", "run_id": "fd_slow_no_repl_t1_1775064780016", "t_fault_ms": 1775064783141, "t_detect_ms": 1775064783614, "detection_latency_ms": 473}

@@ -1,0 +1,3 @@
+{"event": "run_start", "run_id": "fd_fast_async_repl_t4_1775064902697", "ts_ms": 1775064902826, "config": "fd_fast_async_repl", "hb_interval_ms": 50, "hb_timeout_ms": 150, "repl_mode": "async", "fault_type": "crash"}
+{"event": "fault_inject", "run_id": "fd_fast_async_repl_t4_1775064902697", "ts_ms": 1775064905826, "fault_type": "crash", "target": "node1"}
+{"event": "detection_result", "run_id": "fd_fast_async_repl_t4_1775064902697", "t_fault_ms": 1775064905826, "t_detect_ms": 1775064905966, "detection_latency_ms": 140}
