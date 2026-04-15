@@ -108,8 +108,8 @@ public:
      * Returns true on success (or if WAL is disabled).
      */
     bool open_wal(const std::string& path, const std::string& node_id) {
+        node_id_ = node_id;  // Always set, even when WAL is disabled
         if (path.empty()) return true;
-        node_id_ = node_id;
         wal_file_.open(path, std::ios::out | std::ios::app);
         wal_enabled_ = wal_file_.is_open();
         return wal_enabled_;

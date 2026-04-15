@@ -98,9 +98,10 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     if (cfg.is_primary && cfg.peer_addr.empty()) {
-        std::cerr << "Error: --primary requires --peer <host:port>\n\n";
-        usage(argv[0]);
-        return 1;
+        // Allowed: primary without peer simply disables heartbeat and replication.
+        // Useful for isolated unit / correctness testing of WAL and version vectors.
+        std::cerr << cfg.id << ": warning: --primary without --peer; "
+                  << "heartbeat and replication disabled\n";
     }
     if (cfg.repl_mode != "none" && cfg.repl_mode != "sync" && cfg.repl_mode != "async") {
         std::cerr << "Error: --repl_mode must be none, sync, or async\n\n";

@@ -89,12 +89,12 @@ public:
             recovered = store_.recover_from_wal(cfg_.wal_path);
         }
 
-        // Open WAL for future writes
-        if (!cfg_.wal_path.empty()) {
-            if (!store_.open_wal(cfg_.wal_path, cfg_.id)) {
-                std::cerr << cfg_.id << ": warning: failed to open WAL "
-                          << cfg_.wal_path << "\n";
-            }
+        // Always initialize store with node ID; also opens WAL if path is set.
+        // open_wal() sets node_id_ unconditionally so version vectors are correct
+        // even when WAL is disabled.
+        if (!store_.open_wal(cfg_.wal_path, cfg_.id) && !cfg_.wal_path.empty()) {
+            std::cerr << cfg_.id << ": warning: failed to open WAL "
+                      << cfg_.wal_path << "\n";
         }
 
         logger_.log("node_start", "",
@@ -190,7 +190,7 @@ private:
         }
 
         // Replication connection (separate TCP socket)
-        if (cfg_.repl_mode != "none") {
+        if (!(cfg_.repl_mode == "none")) {
             replicator_ = std::make_unique<Replicator>(
                 cfg_.repl_mode, cfg_.id, peer_id, logger_);
             if (!replicator_->connect(host, port)) {
@@ -347,7 +347,7 @@ private:
     // Extract a JSON object-valued field as a string, e.g. "version":{...}
     static std::string extract_object_field(const std::string& line,
                                             const std::string& field) {
-        std::string key_str = "\"" + field + "\":{";
+        std::string key_str = std::string("\"") + field + "\":{";
         auto i = line.find(key_str);
         if (i == std::string::npos) return "";
         i += key_str.size() - 1;  // point to '{'

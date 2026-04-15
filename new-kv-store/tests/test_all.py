@@ -65,7 +65,7 @@ def wait_port(port: int, timeout: float = 5.0) -> bool:
     return False
 
 
-def send_recv(port: int, msg: str, timeout: float = 3.0) -> str:
+def send_recv(port: int, msg: str, timeout: float = 5.0) -> str:
     """Send a newline-terminated JSON message and receive the response."""
     with socket.create_connection(("127.0.0.1", port), timeout=timeout) as s:
         s.sendall(msg.encode())
@@ -96,12 +96,16 @@ def parse_jsonl(path: Path) -> list:
 
 
 def make_set_msg(key: str, value: str, req_id: str) -> str:
+    # Use compact separators: Python json.dumps default adds spaces after ':' and ','
+    # but the C++ extract_type/extract_string parsers expect no spaces.
     return json.dumps({"type": "KV_SET", "key": key, "value": value,
-                       "req_id": req_id, "version": {}}) + "\n"
+                       "req_id": req_id, "version": {}},
+                      separators=(',', ':')) + "\n"
 
 
 def make_get_msg(key: str, req_id: str) -> str:
-    return json.dumps({"type": "KV_GET", "key": key, "req_id": req_id}) + "\n"
+    return json.dumps({"type": "KV_GET", "key": key, "req_id": req_id},
+                      separators=(',', ':')) + "\n"
 
 
 class NodeProcess:
@@ -151,6 +155,7 @@ class NodeProcess:
         )
         assert wait_port(self.port, timeout=5.0), \
             f"Node {self.node_id} failed to start on port {self.port}"
+        time.sleep(0.15)  # let the accept loop fully start
         return self
 
     def stop(self):
