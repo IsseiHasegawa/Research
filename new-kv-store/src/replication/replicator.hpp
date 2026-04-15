@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -27,6 +28,8 @@
 #include <string>
 #include <thread>
 #include <vector>
+
+#include <sys/socket.h>
 
 #include "../common/logger.hpp"
 #include "../common/message.hpp"

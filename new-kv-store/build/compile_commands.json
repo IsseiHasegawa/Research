@@ -1,13 +1,13 @@
 [
 {
   "directory": "/Users/issei/Research/new-kv-store/build",
-  "command": "/usr/bin/c++  -I/Users/issei/Research/new-kv-store/src -O3 -DNDEBUG -std=gnu++17 -arch arm64 -o CMakeFiles/kvnode.dir/src/main.cpp.o -c /Users/issei/Research/new-kv-store/src/main.cpp",
+  "command": "/usr/bin/c++  -I/Users/issei/Research/new-kv-store/src -Wall -Wextra -Wpedantic -O3 -DNDEBUG -std=gnu++17 -arch arm64 -o CMakeFiles/kvnode.dir/src/main.cpp.o -c /Users/issei/Research/new-kv-store/src/main.cpp",
   "file": "/Users/issei/Research/new-kv-store/src/main.cpp",
   "output": "CMakeFiles/kvnode.dir/src/main.cpp.o"
 },
 {
   "directory": "/Users/issei/Research/new-kv-store/build",
-  "command": "/usr/bin/c++  -I/Users/issei/Research/new-kv-store/src -O3 -DNDEBUG -std=gnu++17 -arch arm64 -o CMakeFiles/kv_workload.dir/src/client/workload.cpp.o -c /Users/issei/Research/new-kv-store/src/client/workload.cpp",
+  "command": "/usr/bin/c++  -I/Users/issei/Research/new-kv-store/src -Wall -Wextra -Wpedantic -O3 -DNDEBUG -std=gnu++17 -arch arm64 -o CMakeFiles/kv_workload.dir/src/client/workload.cpp.o -c /Users/issei/Research/new-kv-store/src/client/workload.cpp",
   "file": "/Users/issei/Research/new-kv-store/src/client/workload.cpp",
   "output": "CMakeFiles/kv_workload.dir/src/client/workload.cpp.o"
 }

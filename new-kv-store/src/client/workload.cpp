@@ -27,6 +27,7 @@
 #include <atomic>
 #include <chrono>
 #include <cmath>
+#include <csignal>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -116,7 +117,7 @@ public:
 
     bool open(const std::string& path) {
         std::lock_guard<std::mutex> lock(mu_);
-        f_.open(path, std::ios::out | std::ios::app);
+        f_.open(path, std::ios::out | std::ios::trunc);
         return f_.is_open();
     }
 

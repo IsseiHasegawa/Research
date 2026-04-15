@@ -6,7 +6,7 @@ CXX_DEFINES =
 
 CXX_INCLUDES = -I/Users/issei/Research/new-kv-store/src
 
-CXX_FLAGSarm64 = -O3 -DNDEBUG -std=gnu++17 -arch arm64
+CXX_FLAGSarm64 = -Wall -Wextra -Wpedantic -O3 -DNDEBUG -std=gnu++17 -arch arm64
 
-CXX_FLAGS = -O3 -DNDEBUG -std=gnu++17 -arch arm64
+CXX_FLAGS = -Wall -Wextra -Wpedantic -O3 -DNDEBUG -std=gnu++17 -arch arm64
 

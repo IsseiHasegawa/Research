@@ -41,6 +41,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstdio>
 #include <chrono>
 #include <cmath>
 #include <deque>

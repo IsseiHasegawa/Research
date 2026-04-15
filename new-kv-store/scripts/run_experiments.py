@@ -18,6 +18,7 @@ After all trials: runs compute_metrics.py and plot_results.py.
 
 import json
 import os
+import shutil
 import signal
 import socket
 import subprocess
@@ -54,23 +55,27 @@ def wait_for_port(port: int, timeout: float = 5.0) -> bool:
 
 def send_fault_delay(port: int, delay_ms: int) -> bool:
     """Send a FAULT_DELAY message to a node to inject application-level delay."""
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(2.0)
-        s.connect(("127.0.0.1", port))
-        msg = json.dumps({"type": "FAULT_DELAY", "delay_ms": delay_ms}) + "\n"
-        s.sendall(msg.encode())
-        resp = s.recv(1024)
-        s.close()
-        return b"FAULT_DELAY_ACK" in resp
-    except Exception as e:
-        print(f"  Warning: failed to send FAULT_DELAY: {e}", file=sys.stderr)
-        return False
+    msg = json.dumps({"type": "FAULT_DELAY", "delay_ms": delay_ms}) + "\n"
+    last_err = None
+    for _ in range(25):
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=5.0) as s:
+                s.settimeout(5.0)
+                s.sendall(msg.encode())
+                resp = s.recv(4096)
+                if b"FAULT_DELAY_ACK" in resp:
+                    return True
+        except Exception as e:
+            last_err = e
+        time.sleep(0.12)
+    print(f"  Warning: failed to send FAULT_DELAY after retries: {last_err}",
+          file=sys.stderr)
+    return False
 
 
 def wait_for_declared_dead(log_path: Path, run_id: str, t_fail: int,
                            timeout_sec: float = 15.0):
-    """Poll the primary's log for a declared_dead event after t_fail."""
+    """Poll the primary's log for declared_dead strictly after fault time (t_fail)."""
     deadline = time.time() + timeout_sec
     while time.time() < deadline:
         if log_path.exists():
@@ -82,7 +87,9 @@ def wait_for_declared_dead(log_path: Path, run_id: str, t_fail: int,
                             if (obj.get("event") == "declared_dead" and
                                     obj.get("run_id") == run_id):
                                 ts = obj.get("ts_ms")
-                                if ts is not None and ts >= t_fail - 200:
+                                # Strictly after fault: avoids negative detection_latency
+                                # when a spurious or earlier-phase line is mis-attributed.
+                                if ts is not None and ts >= t_fail:
                                     return ts
                         except json.JSONDecodeError:
                             continue
@@ -134,6 +141,8 @@ def run_one_trial(config: dict, base: dict, trial_num: int, trial_dir: Path):
                                  base.get("workload_zipf_alpha", 0.0))
 
     run_id = f"{name}_t{trial_num}_{wall_ms()}"
+    if trial_dir.exists():
+        shutil.rmtree(trial_dir)
     trial_dir.mkdir(parents=True, exist_ok=True)
 
     log_n0 = trial_dir / "node0.jsonl"
@@ -248,6 +257,7 @@ def run_one_trial(config: dict, base: dict, trial_num: int, trial_dir: Path):
         elif fault_type == "delay":
             # Inject application-level delay on Node 1
             delay_ms = config.get("delay_ms", 500)
+            wait_for_port(port1, timeout=3.0)
             ok = send_fault_delay(port1, delay_ms)
             injector_events.append({
                 "event": "fault_inject",
@@ -266,6 +276,9 @@ def run_one_trial(config: dict, base: dict, trial_num: int, trial_dir: Path):
             timeout_sec=max(10.0, hb_timeout / 1000.0 * 5 + 5.0))
 
         detection_latency_ms = (t_detect - t_fault) if t_detect is not None else None
+        if detection_latency_ms is not None and detection_latency_ms < 0:
+            t_detect = None
+            detection_latency_ms = None
 
         injector_events.append({
             "event": "detection_result",

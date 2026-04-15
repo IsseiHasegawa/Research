@@ -57,6 +57,13 @@ def compute_trial_metrics(trial_dir: Path) -> Dict[str, Any]:
         metrics["workload_num_clients"]= run_start.get("workload_num_clients", 1)  # NEW
         metrics["workload_zipf_alpha"]= run_start.get("workload_zipf_alpha", 0.0) # NEW
 
+    # Drop events from other runs (e.g. legacy appended logs) so throughput and
+    # false-positive counts match this trial's injector run_id only.
+    rid = metrics.get("run_id", "")
+    if rid:
+        node0 = [e for e in node0 if e.get("run_id") == rid]
+        workload = [e for e in workload if e.get("run_id") == rid]
+
     # ── Detection latency ─────────────────────────────────────────────────────
     detection_result = get_first_event(injector, "detection_result")
     if detection_result:
@@ -285,14 +292,21 @@ def write_heatmap_csv(aggregated: List[Dict], path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["hb_timeout_ms", "hb_interval_ms", "repl_mode",
-                          "median_detection_ms", "iqr_detection_ms", "n_trials"])
+        writer.writerow([
+            "hb_timeout_ms", "hb_interval_ms", "repl_mode",
+            "median_detection_ms", "iqr_detection_ms", "n_trials",
+            "fault_type", "fd_algo", "config", "workload_zipf_alpha",
+        ])
         for r in sorted(rows, key=lambda x: (x["hb_timeout_ms"], x["hb_interval_ms"])):
             writer.writerow([
                 r["hb_timeout_ms"], r["hb_interval_ms"], r["repl_mode"],
                 r["detection_latency_ms_median"],
                 r["detection_latency_ms_iqr"],
                 r["n_trials"],
+                r.get("fault_type", ""),
+                r.get("fd_algo", ""),
+                r.get("config", ""),
+                r.get("workload_zipf_alpha", 0.0),
             ])
     print(f"Wrote {path}")
 
@@ -306,14 +320,21 @@ def write_scatter_csv(aggregated: List[Dict], path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["missed", "hb_interval_ms", "hb_timeout_ms", "repl_mode",
-                          "median_detection_ms", "iqr_detection_ms", "n_trials"])
+        writer.writerow([
+            "missed", "hb_interval_ms", "hb_timeout_ms", "repl_mode",
+            "median_detection_ms", "iqr_detection_ms", "n_trials",
+            "fault_type", "fd_algo", "config", "workload_zipf_alpha",
+        ])
         for r in sorted(rows, key=lambda x: x["missed"]):
             writer.writerow([
                 r["missed"], r["hb_interval_ms"], r["hb_timeout_ms"], r["repl_mode"],
                 r["detection_latency_ms_median"],
                 r["detection_latency_ms_iqr"],
                 r["n_trials"],
+                r.get("fault_type", ""),
+                r.get("fd_algo", ""),
+                r.get("config", ""),
+                r.get("workload_zipf_alpha", 0.0),
             ])
     print(f"Wrote {path}")
 

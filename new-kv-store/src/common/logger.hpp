@@ -40,10 +40,11 @@ class Logger {
 public:
     Logger() = default;
 
-    // Open the log file. Returns false on failure.
+    // Open the log file (truncate). Each process start gets a fresh file so
+    // experiment trials and metrics are not polluted by prior runs on the same path.
     bool open(const std::string& path) {
         std::lock_guard<std::mutex> lock(mu_);
-        file_.open(path, std::ios::out | std::ios::app);
+        file_.open(path, std::ios::out | std::ios::trunc);
         return file_.is_open();
     }
 
