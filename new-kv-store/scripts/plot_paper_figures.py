@@ -219,18 +219,42 @@ def figure1_line_latency_vs_hb_interval(agg: pd.DataFrame, out_dir: Path) -> str
     Includes linear regression equation per line.
     """
     df = baseline_filter(agg)
-    df = df[df["fd_algo"] == "fixed"]
+    df = df[df["fd_algo"] == "fixed"].copy()
+    # Keep Figure 1 as a controlled comparison:
+    # - only valid detections
+    # - no false positives
+    # - comparable missed-heartbeat ratio (timeout / interval == 3)
+    df = df[
+        df["detection_latency_ms_median"].notna()
+        & df["hb_interval_ms"].notna()
+        & df["missed"].notna()
+        & (df["false_positives_median"].fillna(0.0) == 0.0)
+        & ((df["missed"].astype(float) - 3.0).abs() < 1e-9)
+    ].copy()
 
     fig, ax = plt.subplots(figsize=(8.2, 5.2))
     equations = []
     points: List[Dict[str, float | str]] = []
 
     for mode in ["none", "sync", "async"]:
-        sub = df[df["repl_mode"] == mode].sort_values("hb_interval_ms")
+        sub = df[df["repl_mode"] == mode].copy()
         if sub.empty:
             continue
+
+        # Collapse duplicate intervals (e.g., multiple configs sharing same interval)
+        # so the line represents one comparable point per interval.
+        sub = (
+            sub.groupby("hb_interval_ms", as_index=False)["detection_latency_ms_median"]
+            .median()
+            .sort_values("hb_interval_ms")
+        )
         x = sub["hb_interval_ms"].astype(float).to_numpy()
         y = sub["detection_latency_ms_median"].astype(float).to_numpy()
+        finite = np.isfinite(x) & np.isfinite(y)
+        x = x[finite]
+        y = y[finite]
+        if len(x) == 0:
+            continue
 
         ax.plot(
             x,
@@ -247,7 +271,7 @@ def figure1_line_latency_vs_hb_interval(agg: pd.DataFrame, out_dir: Path) -> str
         for xv, yv in zip(x, y):
             points.append({"mode": mode, "x": float(xv), "y": float(yv)})
 
-        if len(x) >= 2:
+        if len(np.unique(x)) >= 2:
             m, b = np.polyfit(x, y, 1)
             equations.append((mode, m, b))
             x_fit = np.linspace(x.min(), x.max(), 100)
@@ -262,56 +286,13 @@ def figure1_line_latency_vs_hb_interval(agg: pd.DataFrame, out_dir: Path) -> str
                 zorder=2,
             )
 
-    # Manual annotation placement to avoid overlap, especially near high x (~200 ms).
-    # Base offsets for each mode.
-    mode_offsets: Dict[str, Tuple[int, int, str, str]] = {
-        "none": (10, -14, "left", "top"),
-        "sync": (10, 10, "left", "bottom"),
-        "async": (-12, 10, "right", "bottom"),
-    }
-
-    # For high x values, enforce vertical separation: above / center / below.
-    high_x_vals = sorted({p["x"] for p in points if float(p["x"]) >= 180.0})
-    for hx in high_x_vals:
-        close_pts = [p for p in points if abs(float(p["x"]) - float(hx)) < 1e-9]
-        close_pts_sorted = sorted(close_pts, key=lambda p: float(p["y"]))
-        vertical_slots = [
-            (14, "bottom"),   # above
-            (0, "center"),    # center
-            (-14, "top"),     # below
-        ]
-        if len(close_pts_sorted) == 3:
-            for p, (dy, va) in zip(reversed(close_pts_sorted), vertical_slots):
-                p["manual_dy"] = dy
-                p["manual_va"] = va
-                p["manual_dx"] = 12
-                p["manual_ha"] = "left"
-
-    for p in points:
-        mode = str(p["mode"])
-        x = float(p["x"])
-        y = float(p["y"])
-        dx, dy, ha, va = mode_offsets.get(mode, (8, 8, "left", "bottom"))
-
-        if "manual_dx" in p:
-            dx = int(p["manual_dx"])
-            dy = int(p["manual_dy"])
-            ha = str(p["manual_ha"])
-            va = str(p["manual_va"])
-
-        ax.annotate(
-            f"{y:.1f}",
-            xy=(x, y),
-            xytext=(dx, dy),
-            textcoords="offset points",
-            ha=ha,
-            va=va,
-            fontsize=10.5,
-            color="black",
-            bbox={"boxstyle": "round,pad=0.2", "fc": "white", "ec": "none", "alpha": 0.85},
-            arrowprops={"arrowstyle": "-", "lw": 0.6, "color": "#666666", "alpha": 0.7},
-            zorder=4,
-        )
+    annotate_points(
+        ax,
+        [float(p["x"]) for p in points],
+        [float(p["y"]) for p in points],
+        [f"{float(p['y']):.1f}" for p in points],
+        base_offset=(8, 8),
+    )
 
     eq_lines = [f"{mode}: y = {m:.3f}x + {b:.2f}" for mode, m, b in equations]
     eq_text = "Regression equations\n" + "\n".join(eq_lines) if eq_lines else "Regression equations unavailable"
@@ -334,8 +315,9 @@ def figure1_line_latency_vs_hb_interval(agg: pd.DataFrame, out_dir: Path) -> str
     fig.tight_layout()
 
     caption = (
-        "Figure 1. Detection latency increases with larger heartbeat intervals for fixed failure "
-        "detection. Dotted lines show linear regression fits per replication mode."
+        "Figure 1. Detection latency versus heartbeat interval under controlled conditions "
+        "(fixed FD, crash fault, missed=3, no false positives). Dotted lines show per-mode "
+        "linear regression fits."
     )
     save_figure(fig, out_dir / "figure1_detection_latency_vs_hb_interval", caption)
     return caption
@@ -450,6 +432,18 @@ def figure3_heatmap_parameter_sweep(agg: pd.DataFrame, out_dir: Path) -> str:
             for j in range(len(intervals)):
                 val = matrix[i, j]
                 if np.isnan(val):
+                    ax.annotate(
+                        "N/A",
+                        xy=(j, i),
+                        xytext=(0, 0),
+                        textcoords="offset points",
+                        ha="center",
+                        va="center",
+                        fontsize=10,
+                        color="#666666",
+                        fontstyle="italic",
+                        bbox={"boxstyle": "round,pad=0.15", "fc": "white", "ec": "#BBBBBB", "alpha": 0.9},
+                    )
                     continue
                 text = f"{val:.1f}"
                 color = "white" if val > (vmin + vmax) / 2 else "black"

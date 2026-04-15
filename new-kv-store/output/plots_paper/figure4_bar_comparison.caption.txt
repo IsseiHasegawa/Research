@@ -1,0 +1,1 @@
+Figure 4. Average core metrics by replication mode. Sync/async trade lower consistency risk for additional write latency while throughput remains comparable under rate-limited load.

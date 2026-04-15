@@ -1,0 +1,1 @@
+Figure 2. Configuration-level trade-off between detection latency and downtime. Color encodes replication mode and marker shape encodes failure detector algorithm.

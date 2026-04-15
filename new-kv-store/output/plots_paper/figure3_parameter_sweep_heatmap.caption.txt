@@ -1,0 +1,1 @@
+Figure 3. Heatmaps show detection latency across heartbeat interval/timeout settings for each replication mode under fixed failure detection.

@@ -1,0 +1,1 @@
+Figure 1. Detection latency versus heartbeat interval under controlled conditions (fixed FD, crash fault, missed=3, no false positives). Dotted lines show per-mode linear regression fits.

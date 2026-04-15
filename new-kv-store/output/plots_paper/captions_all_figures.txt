@@ -1,0 +1,5 @@
+Figure 1 caption: Figure 1. Detection latency versus heartbeat interval under controlled conditions (fixed FD, crash fault, missed=3, no false positives). Dotted lines show per-mode linear regression fits.
+Figure 2 caption: Figure 2. Configuration-level trade-off between detection latency and downtime. Color encodes replication mode and marker shape encodes failure detector algorithm.
+Figure 3 caption: Figure 3. Heatmaps show detection latency across heartbeat interval/timeout settings for each replication mode under fixed failure detection.
+Figure 4 caption: Figure 4. Average core metrics by replication mode. Sync/async trade lower consistency risk for additional write latency while throughput remains comparable under rate-limited load.
+Figure 5 caption: Figure 5. Additional trade-off view: configurations with more aggressive failure detection can reduce detection latency but interact with replication behavior, reflected in repl_skipped_count.
