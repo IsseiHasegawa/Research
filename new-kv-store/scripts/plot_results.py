@@ -442,45 +442,80 @@ def main():
             print("Saved detection_vs_downtime.png")
 
     # ── 6. Line: detection latency vs hb_interval, grouped by repl_mode ──────
+    # Keep this figure scientifically comparable by fixing confounders:
+    # - fault_type = crash
+    # - fd_algo = fixed
+    # - missed heartbeats ratio (timeout / interval) = 3
+    # - remove rows with false positives
     if aggregate:
-        by_repl_line: dict[str, dict] = defaultdict(lambda: {"intervals": [], "latencies": []})
+        selected = []
         for r in aggregate:
-            mode  = r.get("repl_mode", "unknown")
-            hb_i  = safe_float(r.get("hb_interval_ms"))
-            lat   = safe_float(r.get("detection_latency_ms_median"))
-            if hb_i is not None and lat is not None:
-                by_repl_line[mode]["intervals"].append(hb_i)
-                by_repl_line[mode]["latencies"].append(lat)
+            lat = safe_float(r.get("detection_latency_ms_median"))
+            hb_i = safe_float(r.get("hb_interval_ms"))
+            missed = safe_float(r.get("missed"))
+            false_pos = safe_float(r.get("false_positives_median"), 0.0)
+            zipf_alpha = safe_float(r.get("workload_zipf_alpha"), 0.0)
+            if lat is None or hb_i is None or missed is None:
+                continue
+            if r.get("fault_type") != "crash":
+                continue
+            if r.get("fd_algo", "fixed") != "fixed":
+                continue
+            if zipf_alpha is not None and abs(zipf_alpha) > 1e-9:
+                continue
+            if abs(missed - 3.0) > 1e-6:
+                continue
+            if false_pos > 0:
+                continue
+            selected.append(r)
 
-        if by_repl_line:
+        by_repl_interval: dict[str, dict[float, list[float]]] = defaultdict(lambda: defaultdict(list))
+        for r in selected:
+            mode = r.get("repl_mode", "unknown")
+            hb_i = safe_float(r.get("hb_interval_ms"))
+            lat = safe_float(r.get("detection_latency_ms_median"))
+            if hb_i is not None and lat is not None:
+                by_repl_interval[mode][hb_i].append(lat)
+
+        if by_repl_interval:
             fig, ax = plt.subplots(figsize=(5.5, 3.8))
 
-            for mode, data in sorted(by_repl_line.items()):
-                pairs = sorted(zip(data["intervals"], data["latencies"]))
-                if not pairs:
+            for mode, by_interval in sorted(by_repl_interval.items()):
+                points = []
+                for hb_i, vals in by_interval.items():
+                    if vals:
+                        points.append((hb_i, float(np.median(vals))))
+                points.sort(key=lambda x: x[0])
+                if len(points) < 2:
                     continue
-                ivs, lats = zip(*pairs)
-                ax.plot(ivs, lats,
-                        marker=MARKER_STYLES.get(mode, "o"),
-                        color=PALETTE.get(mode, PALETTE["default"]),
-                        linewidth=1.5,
-                        markersize=5.5,
-                        markeredgecolor="white",
-                        markeredgewidth=0.5,
-                        label=format_repl_label(mode))
 
-            ax.set_xlabel("Heartbeat Interval (ms)")
-            ax.set_ylabel("Median Detection Latency (ms)")
-            ax.set_title("Detection Latency vs. Heartbeat Interval", pad=8)
-            ax.legend(title="Replication Mode", loc="upper left")
-            ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
-            ax.yaxis.set_major_locator(ticker.MaxNLocator(nbins=6, integer=True))
+                ivs = [p[0] for p in points]
+                lats = [p[1] for p in points]
+                ax.plot(
+                    ivs, lats,
+                    marker=MARKER_STYLES.get(mode, "o"),
+                    color=PALETTE.get(mode, PALETTE["default"]),
+                    linewidth=1.5,
+                    markersize=5.5,
+                    markeredgecolor="white",
+                    markeredgewidth=0.5,
+                    label=format_repl_label(mode),
+                )
 
-            fig.tight_layout()
-            fig.savefig(plots_dir / "detection_vs_interval.png")
+            if ax.has_data():
+                ax.set_xlabel("Heartbeat Interval (ms)")
+                ax.set_ylabel("Median Detection Latency (ms)")
+                ax.set_title("Detection Latency vs. Heartbeat Interval (Controlled)", pad=8)
+                ax.legend(title="Replication Mode", loc="upper left")
+                ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+                ax.yaxis.set_major_locator(ticker.MaxNLocator(nbins=6, integer=True))
+
+                fig.tight_layout()
+                fig.savefig(plots_dir / "detection_vs_interval.png")
+                plots_generated += 1
+                print("Saved detection_vs_interval.png")
+
             plt.close(fig)
-            plots_generated += 1
-            print("Saved detection_vs_interval.png")
 
     # ── 7. Per-trial latency distribution (box plot) ──────────────────────────
     if summary:
