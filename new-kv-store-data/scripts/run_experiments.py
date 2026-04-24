@@ -25,17 +25,43 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Optional, Tuple
 
 ROOT = Path(__file__).resolve().parent.parent
-BIN_DIR = ROOT / "build"
-KVNODE = BIN_DIR / "kvnode"
-WORKLOAD = BIN_DIR / "kv_workload"
 CONFIG_PATH = ROOT / "config" / "experiment_configs.json"
 OUTPUT_DIR = ROOT / "output"
 
 
 def wall_ms() -> int:
     return int(time.time() * 1000)
+
+
+def resolve_binaries(
+    impl_root: Optional[Path],
+    kvnode_bin: Optional[Path],
+    workload_bin: Optional[Path],
+) -> Tuple[Path, Path]:
+    """
+    Resolve kvnode/kv_workload binary locations.
+
+    Priority:
+      1) explicit --kvnode-bin/--workload-bin
+      2) --impl-root/build/{kvnode,kv_workload}
+      3) local ROOT/build/{kvnode,kv_workload} (backward-compatible fallback)
+    """
+    if (kvnode_bin is None) ^ (workload_bin is None):
+        print("Error: --kvnode-bin and --workload-bin must be provided together.", file=sys.stderr)
+        sys.exit(1)
+
+    if kvnode_bin is not None and workload_bin is not None:
+        return kvnode_bin, workload_bin
+
+    if impl_root is not None:
+        bin_dir = impl_root / "build"
+        return bin_dir / "kvnode", bin_dir / "kv_workload"
+
+    bin_dir = ROOT / "build"
+    return bin_dir / "kvnode", bin_dir / "kv_workload"
 
 
 def wait_for_port(port: int, timeout: float = 5.0) -> bool:
@@ -120,7 +146,14 @@ def kill_process(proc: subprocess.Popen, use_sigkill: bool = True):
         pass
 
 
-def run_one_trial(config: dict, base: dict, trial_num: int, trial_dir: Path):
+def run_one_trial(
+    config: dict,
+    base: dict,
+    trial_num: int,
+    trial_dir: Path,
+    kvnode_bin: Path,
+    workload_bin: Path,
+):
     """Run a single experiment trial."""
     name = config["name"]
     hb_interval = config["hb_interval_ms"]
@@ -164,7 +197,7 @@ def run_one_trial(config: dict, base: dict, trial_num: int, trial_dir: Path):
     try:
         # 1. Start secondary (Node 1)
         n1_cmd = [
-            str(KVNODE),
+            str(kvnode_bin),
             "--id", "node1", "--port", str(port1),
             "--log_path", str(log_n1),
             "--run_id", run_id,
@@ -184,7 +217,7 @@ def run_one_trial(config: dict, base: dict, trial_num: int, trial_dir: Path):
 
         # 2. Start primary (Node 0)
         n0_cmd = [
-            str(KVNODE),
+            str(kvnode_bin),
             "--id", "node0", "--port", str(port0), "--primary",
             "--peer", f"127.0.0.1:{port1}",
             "--log_path", str(log_n0),
@@ -208,7 +241,7 @@ def run_one_trial(config: dict, base: dict, trial_num: int, trial_dir: Path):
 
         # 3. Start workload generator (targets Node 0)
         wl_cmd = [
-            str(WORKLOAD),
+            str(workload_bin),
             "--target", f"127.0.0.1:{port0}",
             "--num_ops", str(wl_num_ops),
             "--set_ratio", str(wl_set_ratio),
@@ -340,12 +373,27 @@ def main():
                         help="Override number of trials per config")
     parser.add_argument("--skip-analysis", action="store_true",
                         help="Skip running compute_metrics.py and plot_results.py")
+    parser.add_argument("--impl-root", type=Path, default=None,
+                        help="Path to implementation repo root (expects build/kvnode and build/kv_workload)")
+    parser.add_argument("--kvnode-bin", type=Path, default=None,
+                        help="Direct path to kvnode binary (use together with --workload-bin)")
+    parser.add_argument("--workload-bin", type=Path, default=None,
+                        help="Direct path to kv_workload binary (use together with --kvnode-bin)")
     args = parser.parse_args()
 
+    kvnode_bin, workload_bin = resolve_binaries(
+        args.impl_root, args.kvnode_bin, args.workload_bin
+    )
+
     # Check binaries exist
-    if not KVNODE.exists() or not WORKLOAD.exists():
-        print(f"Error: Build first: cd {ROOT} && mkdir -p build && cd build && cmake .. && make",
-              file=sys.stderr)
+    if not kvnode_bin.exists() or not workload_bin.exists():
+        print("Error: kv binaries not found.", file=sys.stderr)
+        print(f"  kvnode: {kvnode_bin}", file=sys.stderr)
+        print(f"  workload: {workload_bin}", file=sys.stderr)
+        print("Build implementation repo first, then pass either:", file=sys.stderr)
+        print("  --impl-root /path/to/impl-repo", file=sys.stderr)
+        print("or:", file=sys.stderr)
+        print("  --kvnode-bin /path/to/kvnode --workload-bin /path/to/kv_workload", file=sys.stderr)
         sys.exit(1)
 
     # Load config
@@ -377,7 +425,7 @@ def main():
             trial_dir = logs_dir / name / f"trial_{t}"
             print(f"  Starting trial {t}/{trials}...")
             try:
-                result = run_one_trial(cfg, base, t, trial_dir)
+                result = run_one_trial(cfg, base, t, trial_dir, kvnode_bin, workload_bin)
                 all_results.append(result)
             except Exception as e:
                 print(f"  Trial {t} failed: {e}", file=sys.stderr)

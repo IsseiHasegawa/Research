@@ -34,26 +34,39 @@ A lightweight distributed key-value store designed for experimentally studying t
 | `compute_metrics.py` | Python 3 | Metrics computation |
 | `plot_results.py` | Python 3 | Visualization |
 
-## Build Instructions
+## Two-Repository Setup
+
+This repository is the **data/analysis repo**. The node/workload implementation
+is built in a separate implementation repository.
+
+### 1) Clone both repositories under the same parent directory
+
+```bash
+cd <workspace>
+git clone <impl-repo-url> kvstore-impl
+git clone <data-repo-url> new-kv-store-data
+```
+
+### 2) Build the implementation repository
+
+```bash
+cd <workspace>/kvstore-impl
+mkdir -p build && cd build
+cmake ..
+make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
+```
+
+This produces:
+- `build/kvnode`
+- `build/kv_workload`
+
+## Python Environment
 
 ### Prerequisites
 
 - C++17 compiler (GCC 7+, Clang 5+, Apple Clang)
 - CMake 3.10+
 - Python 3.10+ with packages: `pandas`, `numpy`, `matplotlib`, `seaborn`
-
-### Build
-
-```bash
-cd new-kv-store
-mkdir -p build && cd build
-cmake ..
-make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
-```
-
-This produces two binaries in `build/`:
-- `kvnode` — the node process
-- `kv_workload` — the workload generator
 
 ### Install Python Dependencies
 
@@ -108,17 +121,23 @@ Check `node0.jsonl` for a `declared_dead` event after ~`hb_timeout_ms` milliseco
 ### Full experiment sweep (all 8 configurations × 5 trials)
 
 ```bash
-python3 scripts/run_experiments.py
+cd <workspace>/new-kv-store-data
+python3 scripts/run_experiments.py --impl-root ../kvstore-impl
 ```
 
 ### Run a subset
 
 ```bash
 # Only configurations matching "sync"
-python3 scripts/run_experiments.py --filter sync --trials 3
+python3 scripts/run_experiments.py --impl-root ../kvstore-impl --filter sync --trials 3
 
 # Custom config file
-python3 scripts/run_experiments.py --config config/experiment_configs.json --trials 10
+python3 scripts/run_experiments.py --impl-root ../kvstore-impl --config config/experiment_configs.json --trials 10
+
+# Or provide binaries directly
+python3 scripts/run_experiments.py \
+  --kvnode-bin ../kvstore-impl/build/kvnode \
+  --workload-bin ../kvstore-impl/build/kv_workload
 ```
 
 ### Analysis only (after experiments)
@@ -274,30 +293,15 @@ Key code changes needed:
 ## Project Structure
 
 ```
-new-kv-store/
-├── CMakeLists.txt              # Build system
+new-kv-store-data/
 ├── README.md                   # This file
 ├── requirements.txt            # Python dependencies
-├── src/
-│   ├── common/
-│   │   ├── message.hpp         # Wire protocol: message types + JSON serialization
-│   │   ├── logger.hpp          # Thread-safe JSONL structured logger
-│   │   └── net.hpp             # TCP socket utilities
-│   ├── node/
-│   │   ├── kv_store.hpp        # In-memory key-value store
-│   │   └── node.hpp            # Main node logic (server, dispatch, handlers)
-│   ├── failure_detector/
-│   │   └── heartbeat.hpp       # Heartbeat sender/receiver/checker
-│   ├── replication/
-│   │   └── replicator.hpp      # Sync/async replication logic
-│   ├── client/
-│   │   └── workload.cpp        # Workload generator binary
-│   └── main.cpp                # Node entry point
 ├── scripts/
 │   ├── run_experiments.py      # Experiment orchestration
 │   ├── parse_logs.py           # Log parsing utilities
 │   ├── compute_metrics.py      # Metrics computation
-│   └── plot_results.py         # Visualization
+│   ├── plot_results.py         # Visualization
+│   └── plot_paper_figures.py   # Paper-ready visualization
 ├── config/
 │   └── experiment_configs.json # Experiment parameter configurations
 └── output/                     # Created at runtime
