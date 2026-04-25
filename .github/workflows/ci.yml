@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: new-kv-store-data
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: new-kv-store-data/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Syntax check (scripts)
+        run: python -m compileall -q scripts
+
+      - name: Unit tests (analysis smoke)
+        run: python -m unittest tests.test_analysis_smoke -v
+
+      - name: Regenerate metrics from committed logs
+        run: python scripts/compute_metrics.py --output output
+
+      - name: Regenerate plots
+        run: |
+          python scripts/plot_results.py --output output
+          python scripts/plot_paper_figures.py --output output
