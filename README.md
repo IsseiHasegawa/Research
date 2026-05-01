@@ -34,29 +34,77 @@ A lightweight distributed key-value store designed for experimentally studying t
 | `compute_metrics.py` | Python 3 | Metrics computation |
 | `plot_results.py` | Python 3 | Visualization |
 
-## Two-Repository Setup
+## Repositories and directory names
 
-This repository is the **data/analysis repo**. The node/workload implementation
-is built in a separate implementation repository.
+This Git repository is **[Research-data](https://github.com/IsseiHasegawa/Research-data)** (data, analysis, and experiment scripts). The C++ node and workload binaries are built from **[Key-Value-stores](https://github.com/IsseiHasegawa/Key-Value-stores)**.
 
-### 1) Clone both repositories under the same parent directory
+| GitHub repository | Example clone folder | Role |
+|-------------------|----------------------|------|
+| [Research-data](https://github.com/IsseiHasegawa/Research-data) (this repo) | `Research-data` | Holds `new-kv-store-data/` with Python scripts, `config/`, and `output/`. |
+| [Key-Value-stores](https://github.com/IsseiHasegawa/Key-Value-stores) | `kvstore-impl` or `Key-Value-stores` | Build `kvnode` and `kv_workload`; pass this folder to `--impl-root`. |
+
+**`kvstore-impl`** in the commands below means “whatever directory you cloned Key-Value-stores into.” **`new-kv-store-data/`** is a subdirectory inside this repo; it is not the same as the `Research-data` root.
+
+### Working directory for Python commands
+
+After cloning Research-data, **all `pip install` and `python3 scripts/…` commands in this README assume your shell’s current directory is `new-kv-store-data/`** (the inner folder that contains `requirements.txt` and `scripts/`).
+
+```bash
+cd Research-data/new-kv-store-data   # adjust if your clone path or folder name differs
+```
+
+If you skip this `cd`, `pip install -r requirements.txt` and the script paths will not work.
+
+## Two-repository layout (suggested)
+
+Place both clones under one parent directory so relative paths stay simple:
+
+```text
+<workspace>/
+├── kvstore-impl/              # clone of Key-Value-stores
+│   └── build/                 # kvnode, kv_workload (after cmake/make)
+└── Research-data/             # this repository
+    └── new-kv-store-data/     # run all Python commands from here
+```
+
+Clone:
 
 ```bash
 cd <workspace>
-git clone <impl-repo-url> kvstore-impl
-git clone <data-repo-url> new-kv-store-data
+git clone https://github.com/IsseiHasegawa/Key-Value-stores.git kvstore-impl
+git clone https://github.com/IsseiHasegawa/Research-data.git Research-data
+cd Research-data/new-kv-store-data
 ```
 
-### 2) Build the implementation repository
+### Monorepo-style layout (optional)
+
+If both repositories live as siblings under a common parent using their default clone names:
+
+```text
+<workspace>/
+├── Key-Value-stores/
+│   └── build/
+└── Research-data/
+    └── new-kv-store-data/
+```
+
+From `Research-data/new-kv-store-data`, run experiments with:
 
 ```bash
-cd <workspace>/kvstore-impl
+python3 scripts/run_experiments.py --impl-root ../../Key-Value-stores
+```
+
+## Build the implementation
+
+```bash
+cd <workspace>/kvstore-impl      # or Key-Value-stores — implementation repo root
 mkdir -p build && cd build
 cmake ..
 make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
 ```
 
 This produces:
+
 - `build/kvnode`
 - `build/kv_workload`
 
@@ -70,11 +118,21 @@ This produces:
 
 ### Install Python Dependencies
 
+From **`new-kv-store-data/`** (see [Working directory for Python commands](#working-directory-for-python-commands)):
+
 ```bash
+cd Research-data/new-kv-store-data   # path depends on where you cloned this repo
 pip install -r requirements.txt
 ```
 
 ## Running Manually
+
+These steps use `./build/kvnode` and `./build/kv_workload`. Run them from the **implementation** repository root (the directory that contains `build/` after CMake), not from `new-kv-store-data/`.
+
+```bash
+cd <workspace>/kvstore-impl        # or Key-Value-stores
+mkdir -p output/logs/manual
+```
 
 ### 1. Start the secondary node (Node 1)
 
@@ -118,31 +176,40 @@ Check `node0.jsonl` for a `declared_dead` event after ~`hb_timeout_ms` milliseco
 
 ## Running Automated Experiments
 
+From **`Research-data/new-kv-store-data/`** (see [Working directory for Python commands](#working-directory-for-python-commands)). With the [suggested two-repository layout](#two-repository-layout-suggested), the implementation checkout is two levels up from `new-kv-store-data/`, then into `kvstore-impl`:
+
+```bash
+cd Research-data/new-kv-store-data   # if not already there
+```
+
 ### Full experiment sweep (all 8 configurations × 5 trials)
 
 ```bash
-cd <workspace>/new-kv-store-data
-python3 scripts/run_experiments.py --impl-root ../kvstore-impl
+cd Research-data/new-kv-store-data
+python3 scripts/run_experiments.py --impl-root ../../kvstore-impl
 ```
 
 ### Run a subset
 
 ```bash
+cd Research-data/new-kv-store-data
+
 # Only configurations matching "sync"
-python3 scripts/run_experiments.py --impl-root ../kvstore-impl --filter sync --trials 3
+python3 scripts/run_experiments.py --impl-root ../../kvstore-impl --filter sync --trials 3
 
 # Custom config file
-python3 scripts/run_experiments.py --impl-root ../kvstore-impl --config config/experiment_configs.json --trials 10
+python3 scripts/run_experiments.py --impl-root ../../kvstore-impl --config config/experiment_configs.json --trials 10
 
 # Or provide binaries directly
 python3 scripts/run_experiments.py \
-  --kvnode-bin ../kvstore-impl/build/kvnode \
-  --workload-bin ../kvstore-impl/build/kv_workload
+  --kvnode-bin ../../kvstore-impl/build/kvnode \
+  --workload-bin ../../kvstore-impl/build/kv_workload
 ```
 
 ### Analysis only (after experiments)
 
 ```bash
+cd Research-data/new-kv-store-data
 python3 scripts/compute_metrics.py --output output
 python3 scripts/plot_results.py --output output
 ```
@@ -292,20 +359,23 @@ Key code changes needed:
 
 ## Project Structure
 
-```
-new-kv-store-data/
-├── README.md                   # This file
-├── requirements.txt            # Python dependencies
-├── scripts/
-│   ├── run_experiments.py      # Experiment orchestration
-│   ├── parse_logs.py           # Log parsing utilities
-│   ├── compute_metrics.py      # Metrics computation
-│   ├── plot_results.py         # Visualization
-│   └── plot_paper_figures.py   # Paper-ready visualization
-├── config/
-│   └── experiment_configs.json # Experiment parameter configurations
-└── output/                     # Created at runtime
-    ├── logs/                   # Per-trial JSONL logs
-    ├── results/                # CSV metrics
-    └── plots/                  # PNG visualizations
+This README lives at the **Research-data** repository root. Runnable Python assets are under **`new-kv-store-data/`**:
+
+```text
+Research-data/
+├── README.md                   # This file (repository root)
+└── new-kv-store-data/
+    ├── requirements.txt        # Python dependencies
+    ├── scripts/
+    │   ├── run_experiments.py  # Experiment orchestration
+    │   ├── parse_logs.py       # Log parsing utilities
+    │   ├── compute_metrics.py  # Metrics computation
+    │   ├── plot_results.py     # Visualization
+    │   └── plot_paper_figures.py  # Paper-ready visualization
+    ├── config/
+    │   └── experiment_configs.json
+    └── output/                 # Created at runtime
+        ├── logs/
+        ├── results/
+        └── plots/
 ```
