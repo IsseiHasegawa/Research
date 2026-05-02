@@ -214,6 +214,24 @@ python3 scripts/compute_metrics.py --output output
 python3 scripts/plot_results.py --output output
 ```
 
+## Error handling and validation
+
+**C++ binaries (`kvnode`, `kv_workload`)**
+
+Argument checks, I/O failures, peer connection errors, and graceful shutdown behavior are documented in the [Key-Value-stores README](https://github.com/IsseiHasegawa/Key-Value-stores/blob/main/README.md#error-handling-and-validation) under *Error handling and validation*.
+
+**`scripts/run_experiments.py`**
+
+- **argparse** validates flags; **`--kvnode-bin` and `--workload-bin` must appear together** (or omit both and use `--impl-root`).
+- Before trials start, the script checks that both binaries exist. If not, it prints paths and hints (`--impl-root` vs explicit bins) to **stderr** and exits with code 1.
+- **`--filter`**: If no configuration names match, the script exits with an error message.
+- **Per-trial errors**: Exceptions inside a trial are caught, logged to stderr (`Trial N failed: …`), and recorded in `output/<run>/results/all_trials.json` under an `error` field; the sweep **continues** with the remaining trials.
+- **Networking**: Waits for node ports with timeouts; warns on stderr if a port is not ready. Fault-delay injection retries and warns if the control message cannot be delivered. JSON log lines from nodes use guarded parsing where partial reads can occur.
+
+**`scripts/compute_metrics.py` and `scripts/plot_results.py`**
+
+- argparse-driven paths; metrics code skips or reports per-trial problems when log layouts are unexpected (see stderr when processing a given trial directory fails).
+
 ## CLI Reference
 
 ### `kvnode`
